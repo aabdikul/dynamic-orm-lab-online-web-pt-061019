@@ -57,6 +57,7 @@ class InteractiveRecord
     value = hash_in.values.first.to_s
     DB[:conn].results_as_hash = true
     DB[:conn].execute(sql,value)
+    binding.pry
   end
 
 end
