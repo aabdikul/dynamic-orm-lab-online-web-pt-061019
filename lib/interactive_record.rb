@@ -8,19 +8,14 @@ class InteractiveRecord
   end
 
   def self.column_names
+    sql = "PRAGMA table_info('#{self.table_name}')"
     DB[:conn].results_as_hash = true
-    sql = "PRAGMA table_info('#{table_name}')"
-    table_info = DB[:conn].execute(sql)
-    column_names = []
-    table_info.each do |column|
-      column_names << column["name"]
-    end
-    column_names.compact
+    DB[:conn].execute(sql).map {|column| column["name"]}.compact
   end
 
-  def initialize(options={})
-    options.each do |property,value|
-      self.send("#{property}=", value)
+  def initialize(hash_in = nil)
+    if !hash_in.nil?
+      hash_in.each {|keys,values| send("#{keys}=",values)}
     end
   end
 
@@ -32,36 +27,36 @@ class InteractiveRecord
     self.class.column_names.delete_if {|col| col == "id"}.join(", ")
   end
 
+  def values_for_insert
+    self.class.column_names.delete_if {|col| col == "id"}.map {|col| "'#{send(col)}'"}.join(", ")
+  end
+
   def save
-    sql = "INSERT INTO #{table_name_for_insert} (#{col_names_for_insert}) VALUES (#{values_for_insert})"
+    sql = <<-SQL
+      INSERT INTO #{self.table_name_for_insert} (#{self.col_names_for_insert})
+      VALUES (#{self.values_for_insert})
+      SQL
     DB[:conn].execute(sql)
-    @id = DB[:conn].execute("SELECT last_insert_rowid() FROM #{table_name_for_insert}")[0][0]
+    @id = DB[:conn].execute("SELECT last_insert_rowid() FROM #{self.table_name_for_insert}")[0][0]
   end
 
-def values_for_insert
-  values = []
-  self.class.column_names.each do |col_name|
-    values << "'#{send(col_name)}'" unless send(col_name).nil?
-  end
-  values.join(", ")
-end
-
-def self.find_by_name(input)
-  sql = "SELECT * FROM #{self.table_name} WHERE name = ?"
-  DB[:conn].execute(sql, input)
-end
-
-
-  def self.find_by(attribute_hash)
-    value = attribute_hash.values.first
-    if value.class == Fixnum
-      formatted_value = value
-    else
-      formatted_value = "'#{value}'"
-    end
-    sql = "SELECT * FROM #{self.table_name} WHERE #{attribute_hash.keys.first} = #{formatted_value}"
-    DB[:conn].execute(sql)
+  def self.find_by_name(name)
+    sql = <<-SQL
+      SELECT * FROM #{self.table_name}
+      WHERE name = ?
+      SQL
+    DB[:conn].results_as_hash = true
+    DB[:conn].execute(sql,name)
   end
 
+  def self.find_by(hash_in)
+    sql = <<-SQL
+      SELECT * FROM #{self.table_name}
+      WHERE #{hash_in.keys.first} = ?
+      SQL
+    value = hash_in.values.first.to_s
+    DB[:conn].results_as_hash = true
+    DB[:conn].execute(sql,value)
+  end
 
 end
