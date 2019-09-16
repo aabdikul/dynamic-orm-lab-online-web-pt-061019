@@ -58,7 +58,6 @@ class InteractiveRecord
       SQL
     DB[:conn].results_as_hash = true
     DB[:conn].execute(sql)
-    binding.pry
   end
 
 end
