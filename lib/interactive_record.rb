@@ -50,7 +50,7 @@ class InteractiveRecord
   end
 
   def self.find_by(hash_in)
-    value = hash_in.values.first.to_s
+    value = hash_in.values.first
     formatted_value = value.class == Fixnum ? value : "'#{value}'"
     sql = <<-SQL
       SELECT * FROM #{self.table_name}
